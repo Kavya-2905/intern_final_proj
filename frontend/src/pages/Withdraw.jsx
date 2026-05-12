@@ -1,0 +1,283 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { bankingService } from '../services';
+import { useAuth } from '../context/AuthContext';
+import { FiArrowDownCircle, FiCheckCircle, FiAlertCircle, FiArrowLeft, FiLock } from 'react-icons/fi';
+import Alert from '../components/Alert';
+
+const Withdraw = () => {
+  const { user } = useAuth();
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [alert, setAlert] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const navigate = useNavigate();
+
+  const quickAmounts = [1000, 5000, 10000, 25000, 50000];
+  const maxWithdraw = user?.balance || 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      return setAlert({ type: 'error', message: 'Please enter a valid amount' });
+    }
+
+    if (parseFloat(amount) > maxWithdraw) {
+      return setAlert({ 
+        type: 'error', 
+        message: `Insufficient balance. Your available balance is ₹${maxWithdraw.toLocaleString('en-IN')}` 
+      });
+    }
+
+    setShowConfirm(true);
+  };
+
+  const handleConfirmWithdraw = async () => {
+    setShowConfirm(false);
+    setLoading(true);
+    
+    try {
+      await bankingService.withdraw({ 
+        amount: parseFloat(amount), 
+        description: description || 'Cash Withdrawal' 
+      });
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (error) {
+      setAlert({ 
+        type: 'error', 
+        message: error.response?.data?.message || 'Withdrawal failed. Please try again.' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickAmount = (val) => {
+    setAmount(val.toString());
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto w-full">
+      {alert && <Alert message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
+
+      {/* Success Modal */}
+      {showSuccess && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"
+            >
+              <FiCheckCircle className="text-red-600 text-4xl" />
+            </motion.div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Withdrawal Successful!</h3>
+            <p className="text-gray-600 mb-4">Money has been withdrawn from your account</p>
+            <motion.p
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-4xl font-bold text-red-600 mb-6"
+            >
+              - ₹{parseFloat(amount).toLocaleString('en-IN')}
+            </motion.p>
+            <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiLock className="text-amber-600 text-3xl" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Withdrawal</h3>
+              <p className="text-gray-600">Are you sure you want to withdraw this amount?</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-gray-600 mb-1">Amount</p>
+              <p className="text-2xl font-bold text-red-600">- ₹{parseFloat(amount).toLocaleString('en-IN')}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-3 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmWithdraw}
+                disabled={loading}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : 'Confirm'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 text-gray-600 hover:text-primary transition mb-4"
+        >
+          <FiArrowLeft /> Back to Dashboard
+        </button>
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Withdraw Money</h1>
+        <p className="text-gray-600 mt-2">Withdraw funds from your account</p>
+      </motion.div>
+
+      {/* Current Balance Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-gradient-to-br from-red-500 to-red-700 rounded-2xl p-6 text-white mb-6 shadow-xl"
+      >
+        <p className="text-white/80 text-sm mb-1">Available Balance</p>
+        <p className="text-3xl sm:text-4xl font-bold">₹{maxWithdraw.toLocaleString('en-IN')}</p>
+        <p className="text-sm text-white/70 mt-2">Maximum withdrawal amount</p>
+      </motion.div>
+
+      {/* Withdraw Form */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-200"
+      >
+        <form onSubmit={handleSubmit}>
+          {/* Amount Input */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Withdrawal Amount
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">₹</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                className="w-full pl-10 pr-4 py-4 text-2xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition"
+                required
+                min="1"
+                max={maxWithdraw}
+                step="0.01"
+              />
+            </div>
+            {parseFloat(amount) > maxWithdraw && (
+              <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                <FiAlertCircle /> Amount exceeds available balance
+              </p>
+            )}
+          </div>
+
+          {/* Quick Amounts */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Quick Amounts
+            </label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+              {quickAmounts.map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => handleQuickAmount(val)}
+                  disabled={val > maxWithdraw}
+                  className={`py-3 px-4 rounded-xl font-semibold transition ${
+                    amount === val.toString()
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : val > maxWithdraw
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  ₹{(val / 1000).toFixed(0)}K
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Description (Optional)
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., ATM withdrawal, Cash out"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition"
+            />
+          </div>
+
+          {/* Warning Box */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <FiAlertCircle className="text-amber-600 text-xl flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900 mb-1">Warning</p>
+                <p className="text-sm text-amber-700">
+                  Withdrawal is irreversible. Please verify the amount before confirming. 
+                  This action will be recorded in your transaction history.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit"
+            disabled={loading || !amount || parseFloat(amount) > maxWithdraw}
+            className="w-full py-4 bg-gradient-to-r from-red-500 to-red-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <FiArrowDownCircle />
+            Withdraw ₹{amount ? parseFloat(amount).toLocaleString('en-IN') : '0'}
+          </motion.button>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Withdraw;
