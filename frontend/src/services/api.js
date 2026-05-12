@@ -10,8 +10,20 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 10000 // 10 second timeout
 });
+
+// Add request interceptor for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log('Making request to:', config.baseURL + config.url);
+    console.log('Request method:', config.method);
+    console.log('Request data:', config.data);
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Add token to requests
 api.interceptors.request.use(
