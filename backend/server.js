@@ -67,6 +67,19 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/api', routes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'MM Bank API is running', 
+    version: '1.0.0',
+    status: 'healthy',
+    endpoints: {
+      health: '/health',
+      api: '/api'
+    }
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'AI Banking API is running' });
